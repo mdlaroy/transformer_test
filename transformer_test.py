@@ -20,40 +20,34 @@ def generate_response(prompt, max_new_tokens=50):
             temperature=0.7,
             top_k=50,
             top_p=0.95,
-            repetition_penalty=1.5,  
+            repetition_penalty=1.2,
             pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id,
         )
 
-    full_response = tokenizer.decode(output[0], skip_special_tokens=True)
-    response = full_response[len(prompt):].strip()
-    
-    # remove any dialogue-like patterns and keep only the content
-    response = re.sub(r'^(human:|meep:|ai:|bot:)\s*', '', response, flags=re.IGNORECASE)
-    response = re.split(r'\n|(?<=[.!?])\s', response)[0]  # take only the first sentence
-    
+    response = tokenizer.decode(output[0], skip_special_tokens=True)
+    response = response[len(prompt):].strip()
+
+    # clean up the response
+    response = re.sub(r'(human:|meep:|ai:|bot:|you:).*?(\n|$)', '', response, flags=re.IGNORECASE|re.DOTALL)
+    response = re.split(r'\n|(?<=[.!?])\s', response)[0]  # Take only the first sentence
     return response.strip()
 
 def chat():
-    conversation_history = []
-    context_window = 15 
     print("meep: Hi there! I'm meep. What would you like to talk about? (Type 'quit' to exit)")
-    
+
     while True:
         user_input = input("you: ")
-        if user_input.lower() in ['quit']:
-            print("meep: until next time!")
+        if user_input.lower() == 'quit':
+            print("meep: Until next time!")
             break
 
-        conversation_history.append(f"you: {user_input}")
-        context = "\n".join(conversation_history[-context_window:])
-        prompt = f"The following is a conversation with an AI companion named meep. meep is helpful, creative, clever, and very friendly.\n\n{context}\nmeep:"
-        
+        prompt = f"meep is a friendly AI assistant. meep gives direct, concise answers.\n\nyou: {user_input}\nmeep:"
         response = generate_response(prompt)
-        while len(response.split()) < 3 or response.lower() in ["no", "yes", "hello", "hi"]:
+        
+        while len(response.split()) < 3 or len(response.split()) > 20:
             response = generate_response(prompt)
-        
+
         print(f"meep: {response}")
-        
-        conversation_history.append(f"meep: {response}")
 
 chat()
